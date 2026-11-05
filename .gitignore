@@ -1,0 +1,15 @@
+# --- Entradas obligatorias (política de la organización, no eliminar) ---
+.secrets/
+*.env
+certs/
+prod.env
+
+# --- Proyecto ---
+.env
+node_modules/
+dist/
+coverage/
+healthtrack.db
+healthtrack.db-wal
+healthtrack.db-shm
+*.log

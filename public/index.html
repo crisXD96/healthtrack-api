@@ -1,0 +1,1975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HealthTrack</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234f46e5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z'/><path d='M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27'/></svg>" />
+  <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+  <style>
+    .fade-in { animation: fadeIn 0.25s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .modal-enter { animation: modalIn 0.2s ease-out; }
+    @keyframes modalIn { from { opacity: 0; transform: translateY(12px) scale(0.97); } to { opacity: 1; transform: none; } }
+    .overlay-enter { animation: overlayIn 0.2s ease-out; }
+    @keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+    .spinner { border: 3px solid #e0e7ff; border-top-color: #4f46e5; border-radius: 9999px; width: 2rem; height: 2rem; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .scrollbar-thin::-webkit-scrollbar { height: 6px; width: 6px; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    body.scroll-locked { overflow: hidden; }
+    /* Horizontally scrollable pill/tab rows: swipeable on touch, no visible scrollbar. */
+    .no-scrollbar { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 antialiased">
+
+  <!-- =========================== AUTH SCREEN =========================== -->
+  <div id="auth-screen" class="hidden">
+  <div class="min-h-screen lg:grid lg:grid-cols-2">
+    <div class="hidden lg:flex flex-col justify-between bg-gradient-to-br from-indigo-600 via-indigo-700 to-indigo-900 p-12 text-white">
+      <div class="flex items-center gap-3">
+        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15"><i data-lucide="heart-pulse" class="h-6 w-6"></i></div>
+        <span class="text-2xl font-semibold tracking-tight">HealthTrack</span>
+      </div>
+      <div class="max-w-md">
+        <h1 class="text-4xl font-semibold leading-tight">Patient health, tracked in one place.</h1>
+        <p class="mt-4 text-indigo-100">Monitor vital signs, manage appointments and get alerted the moment a reading falls out of range.</p>
+        <ul class="mt-8 space-y-3 text-indigo-50">
+          <li class="flex items-center gap-3"><span class="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10"><i data-lucide="chart-line" class="h-4 w-4"></i></span> Trends for blood pressure, glucose, weight and more</li>
+          <li class="flex items-center gap-3"><span class="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10"><i data-lucide="bell-ring" class="h-4 w-4"></i></span> Automatic warning and critical alerts</li>
+          <li class="flex items-center gap-3"><span class="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10"><i data-lucide="calendar-check" class="h-4 w-4"></i></span> Appointment scheduling with conflict detection</li>
+        </ul>
+      </div>
+      <p class="text-sm text-indigo-200">Demo project · Claude Code course · Module 10</p>
+    </div>
+
+    <div class="flex min-h-screen items-center justify-center p-4 sm:p-8">
+      <div class="w-full max-w-md">
+        <div class="mb-8 flex items-center justify-center gap-2 lg:hidden">
+          <i data-lucide="heart-pulse" class="h-7 w-7 text-indigo-600"></i><span class="text-2xl font-semibold text-indigo-600">HealthTrack</span>
+        </div>
+
+        <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+          <!-- Login -->
+          <div id="login-panel">
+            <h2 class="text-2xl font-semibold text-slate-900">Welcome back</h2>
+            <p class="mt-1 text-sm text-slate-500">Sign in to your HealthTrack account.</p>
+            <form id="login-form" class="mt-6 space-y-4">
+              <div>
+                <label for="login-email" class="mb-1 block text-sm font-medium text-slate-700">Email</label>
+                <input id="login-email" name="email" type="email" required autocomplete="email" placeholder="you@example.com"
+                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40" />
+              </div>
+              <div>
+                <label for="login-password" class="mb-1 block text-sm font-medium text-slate-700">Password</label>
+                <input id="login-password" name="password" type="password" required autocomplete="current-password" placeholder="••••••••"
+                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40" />
+              </div>
+              <p id="login-error" role="alert" class="hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></p>
+              <button type="submit" class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-60">Sign in</button>
+            </form>
+            <p class="mt-4 text-center text-sm text-slate-500">
+              Don't have an account? <button type="button" id="show-register" class="font-medium text-indigo-600 hover:text-indigo-700">Register</button>
+            </p>
+
+            <div class="my-6 flex items-center gap-3 text-xs uppercase tracking-wide text-slate-400">
+              <div class="h-px flex-1 bg-slate-200"></div> Quick login (demo users) <div class="h-px flex-1 bg-slate-200"></div>
+            </div>
+            <div id="quick-logins" class="space-y-2"></div>
+          </div>
+
+          <!-- Register -->
+          <div id="register-panel" class="hidden">
+            <h2 class="text-2xl font-semibold text-slate-900">Create an account</h2>
+            <p class="mt-1 text-sm text-slate-500">Create your patient account to follow your health metrics and appointments.</p>
+            <form id="register-form" class="mt-6 space-y-4">
+              <div>
+                <label for="reg-name" class="mb-1 block text-sm font-medium text-slate-700">Full name</label>
+                <input id="reg-name" name="name" required maxlength="100" placeholder="Jane Doe"
+                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40" />
+              </div>
+              <div>
+                <label for="reg-email" class="mb-1 block text-sm font-medium text-slate-700">Email</label>
+                <input id="reg-email" name="email" type="email" required autocomplete="email" placeholder="you@example.com"
+                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40" />
+              </div>
+              <div>
+                <label for="reg-password" class="mb-1 block text-sm font-medium text-slate-700">Password</label>
+                <input id="reg-password" name="password" type="password" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters"
+                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40" />
+              </div>
+              <div class="flex gap-2.5 rounded-lg border border-indigo-100 bg-indigo-50/70 px-3 py-2.5 text-xs text-indigo-800">
+                <i data-lucide="stethoscope" class="mt-px h-4 w-4 shrink-0 text-indigo-500" aria-hidden="true"></i>
+                <p><span class="font-semibold">Are you a doctor?</span> Clinician accounts are created by an administrator so they can be verified before accessing patient data.</p>
+              </div>
+              <p id="register-error" role="alert" class="hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></p>
+              <button type="submit" class="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-60">Create account</button>
+            </form>
+            <p class="mt-4 text-center text-sm text-slate-500">
+              Already registered? <button type="button" id="show-login" class="font-medium text-indigo-600 hover:text-indigo-700">Sign in</button>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <!-- =========================== APP SHELL =========================== -->
+  <div id="app-shell" class="hidden">
+    <!-- Mobile top bar -->
+    <header class="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4 md:hidden">
+      <button id="menu-btn" class="rounded-lg p-2 text-slate-600 hover:bg-slate-100" aria-label="Open menu" aria-controls="sidebar" aria-expanded="false">
+        <i data-lucide="menu" class="h-6 w-6"></i>
+      </button>
+      <span class="flex items-center gap-2 font-semibold text-indigo-600"><i data-lucide="heart-pulse" class="h-5 w-5"></i>HealthTrack</span>
+      <a href="#/notifications" class="relative rounded-lg p-2 text-slate-600 hover:bg-slate-100" aria-label="Notifications">
+        <i data-lucide="bell" class="h-5 w-5"></i><span data-unread-badge class="absolute -right-0.5 -top-0.5 hidden min-w-[1.1rem] rounded-full bg-red-500 px-1 text-center text-[10px] font-semibold leading-[1.1rem] text-white"></span>
+      </a>
+    </header>
+
+    <div id="sidebar-overlay" class="fixed inset-0 z-30 hidden bg-slate-900/40 md:hidden"></div>
+
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-slate-200 bg-white transition-transform duration-200 ease-out md:translate-x-0">
+      <div class="flex h-16 items-center gap-2 border-b border-slate-100 px-6">
+        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white"><i data-lucide="heart-pulse" class="h-5 w-5"></i></div>
+        <span class="text-xl font-semibold tracking-tight text-slate-900">HealthTrack</span>
+      </div>
+      <div class="border-b border-slate-100 px-4 py-4">
+        <div class="flex items-center gap-3">
+          <div id="user-avatar" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-semibold text-indigo-700"></div>
+          <div class="min-w-0">
+            <p id="user-name" class="truncate text-sm font-semibold text-slate-900"></p>
+            <span id="user-role" class="mt-0.5 inline-block rounded-full px-2 py-0.5 text-xs font-medium capitalize"></span>
+          </div>
+        </div>
+      </div>
+      <nav id="nav" class="flex-1 space-y-1 overflow-y-auto px-3 py-4"></nav>
+      <div class="border-t border-slate-100 p-4">
+        <button id="logout-btn" class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-red-50 hover:text-red-600">
+          <i data-lucide="log-out" class="h-5 w-5"></i>
+          Logout
+        </button>
+      </div>
+    </aside>
+
+    <main class="min-h-screen md:pl-64">
+      <div id="view" class="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8"></div>
+    </main>
+  </div>
+
+  <div id="modal-root"></div>
+  <div id="toast-root" role="status" aria-live="polite" class="pointer-events-none fixed inset-x-4 bottom-4 z-[60] flex flex-col items-center gap-2 sm:inset-x-auto sm:right-4 sm:items-end"></div>
+
+<script>
+'use strict';
+
+/* ============================================================
+ * Constants
+ * ============================================================ */
+const API_BASE = '/api';
+
+const METRIC_META = {
+  blood_pressure:    { label: 'Blood Pressure',    tab: 'Blood Pressure', unit: 'mmHg',  icon: 'activity',    decimals: 0 },
+  glucose:           { label: 'Glucose',           tab: 'Glucose',        unit: 'mg/dL', icon: 'droplet',     decimals: 0 },
+  weight:            { label: 'Weight',            tab: 'Weight',         unit: 'kg',    icon: 'scale',       decimals: 1 },
+  heart_rate:        { label: 'Heart Rate',        tab: 'Heart Rate',     unit: 'bpm',   icon: 'heart-pulse', decimals: 0 },
+  temperature:       { label: 'Temperature',       tab: 'Temp',           unit: '°C',    icon: 'thermometer', decimals: 1 },
+  oxygen_saturation: { label: 'Oxygen Saturation', tab: 'O2',             unit: '%',     icon: 'wind',        decimals: 0 },
+};
+const METRIC_TYPES = Object.keys(METRIC_META);
+
+const STATUS_STYLES = {
+  normal:   { badge: 'bg-emerald-100 text-emerald-700', dot: 'bg-emerald-500', row: '',            border: 'border-l-emerald-500', color: '#10b981' },
+  warning:  { badge: 'bg-amber-100 text-amber-800',     dot: 'bg-amber-500',   row: 'bg-amber-50', border: 'border-l-amber-500',   color: '#f59e0b' },
+  critical: { badge: 'bg-red-100 text-red-700',         dot: 'bg-red-500',     row: 'bg-red-50',   border: 'border-l-red-500',     color: '#ef4444' },
+};
+
+const APPT_STYLES = {
+  scheduled: 'bg-sky-100 text-sky-700',
+  confirmed: 'bg-indigo-100 text-indigo-700',
+  completed: 'bg-emerald-100 text-emerald-700',
+  cancelled: 'bg-slate-200 text-slate-600',
+};
+const APPT_TRANSITIONS = {
+  scheduled: ['confirmed', 'completed', 'cancelled'],
+  confirmed: ['completed', 'cancelled'],
+  completed: [],
+  cancelled: [],
+};
+
+const SEVERITY_STYLES = {
+  // `edge` is applied as an inline style: Tailwind's divide-* color would otherwise override border-l-* in lists.
+  info:     { badge: 'bg-blue-100 text-blue-700',   edge: 'border-left-color:#3b82f6', icon: 'info',           iconColor: 'text-blue-500' },
+  warning:  { badge: 'bg-amber-100 text-amber-800', edge: 'border-left-color:#f59e0b', icon: 'triangle-alert', iconColor: 'text-amber-500' },
+  critical: { badge: 'bg-red-100 text-red-700',     edge: 'border-left-color:#ef4444', icon: 'octagon-alert',  iconColor: 'text-red-500' },
+};
+
+const ROLE_STYLES = {
+  admin: 'bg-purple-100 text-purple-700',
+  doctor: 'bg-indigo-100 text-indigo-700',
+  patient: 'bg-emerald-100 text-emerald-700',
+};
+
+const QUICK_LOGINS = [
+  { label: 'Login as Dr. Martínez',          email: 'elena.martinez@healthtrack.com', password: 'Doctor123!',  icon: 'stethoscope', hint: 'Doctor · Cardiology' },
+  { label: 'Login as Patient (Carlos Ruiz)', email: 'carlos.ruiz@email.com',          password: 'Patient123!', icon: 'user-round', hint: 'Patient' },
+  { label: 'Login as Admin',                 email: 'admin@healthtrack.com',          password: 'Admin123!',   icon: 'shield-check', hint: 'Administrator' },
+];
+
+const CLS = {
+  input: 'w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 disabled:bg-slate-100 disabled:text-slate-500',
+  label: 'mb-1 block text-sm font-medium text-slate-700',
+  btnPrimary: 'inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-60',
+  btnSecondary: 'inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2',
+  btnDanger: 'inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-60',
+  btnDangerGhost: 'inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50',
+  card: 'rounded-xl border border-slate-200 bg-white shadow-sm',
+  pill: 'rounded-full px-3 py-1.5 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500',
+  /** Focus ring for clickable rows and cards (keyboard users). */
+  focusRing: 'focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500',
+};
+
+/** Filter pill classes, shared by the appointments and notifications filters. */
+function pillClass(active) {
+  return `${CLS.pill} whitespace-nowrap ${active ? 'bg-indigo-600 text-white shadow-sm' : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`;
+}
+
+const VIEW_TITLES = {
+  dashboard: 'Dashboard', patients: 'Patients', appointments: 'Appointments', metrics: 'Health Metrics', notifications: 'Notifications',
+};
+
+/* ============================================================
+ * State
+ * ============================================================ */
+const state = {
+  token: null,
+  user: null,
+  ranges: null,
+  doctors: null,
+  charts: [],
+  renderId: 0,
+  unreadTimer: null,
+};
+
+/* ============================================================
+ * Utilities
+ * ============================================================ */
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+/** Lucide icon placeholder; renderIcons() swaps it for an inline SVG. */
+function icon(name, cls = 'h-4 w-4') {
+  return `<i data-lucide="${name}" class="shrink-0 ${cls}" aria-hidden="true"></i>`;
+}
+
+let iconsQueued = false;
+function renderIcons() {
+  iconsQueued = false;
+  if (window.lucide && document.querySelector('i[data-lucide]')) lucide.createIcons();
+}
+// Views are rendered with innerHTML, so convert new placeholders whenever the DOM changes.
+new MutationObserver(() => {
+  if (!iconsQueued) {
+    iconsQueued = true;
+    requestAnimationFrame(renderIcons);
+  }
+}).observe(document.body, { childList: true, subtree: true });
+
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function parseDate(value) {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  return new Date(value.includes('T') ? value : value.replace(' ', 'T'));
+}
+
+const fmt = {
+  date: (s) => (s ? parseDate(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'),
+  shortDate: (s) => parseDate(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+  weekday: (s) => parseDate(s).toLocaleDateString('en-US', { weekday: 'short' }),
+  month: (s) => parseDate(s).toLocaleDateString('en-US', { month: 'short' }),
+  time: (s) => parseDate(s).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+  dateTime: (s) => (s ? `${fmt.date(s)} · ${fmt.time(s)}` : '—'),
+  relative(s) {
+    const diffMin = Math.round((Date.now() - parseDate(s).getTime()) / 60000);
+    if (diffMin < 1) return 'just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const h = Math.round(diffMin / 60);
+    if (h < 24) return `${h}h ago`;
+    const d = Math.round(h / 24);
+    if (d < 30) return `${d}d ago`;
+    return fmt.date(s);
+  },
+  num(v, decimals = 0) {
+    if (v === null || v === undefined) return '—';
+    return Number(v).toFixed(decimals);
+  },
+};
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+function localDateKey(d = new Date()) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
+function localDateTimeInput(d = new Date()) { return `${localDateKey(d)}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`; }
+
+function initials(name) {
+  return String(name || '?').replace(/^Dr\.\s*/, '').split(/\s+/).filter(Boolean).map((p) => p[0]).slice(0, 2).join('').toUpperCase();
+}
+
+function formatReading(type, value, secondary) {
+  if (value === null || value === undefined) return '—';
+  const d = METRIC_META[type]?.decimals ?? 0;
+  if (type === 'blood_pressure') return `${fmt.num(value)}/${secondary === null || secondary === undefined ? '—' : fmt.num(secondary)}`;
+  return fmt.num(value, d);
+}
+
+function badge(text, classes) {
+  return `<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${classes}">${esc(text)}</span>`;
+}
+
+/** Shows (or hides, with an empty message) an inline error box. */
+function setError(el, message = '') {
+  if (!el) return;
+  el.textContent = message;
+  el.classList.toggle('hidden', !message);
+}
+
+/** Makes a non-button element (row, card) clickable with Enter/Space as well as the mouse. */
+function onActivate(el, handler) {
+  el.addEventListener('click', handler);
+  el.addEventListener('keydown', (e) => {
+    if (e.target !== el || (e.key !== 'Enter' && e.key !== ' ')) return;
+    e.preventDefault();
+    handler(e);
+  });
+}
+
+/** Body scroll lock while an overlay (modal / mobile sidebar) is open. */
+function syncScrollLock() {
+  const sidebarOpen = !$('#sidebar-overlay').classList.contains('hidden');
+  const modalOpen = $('#modal-root').children.length > 0;
+  document.body.classList.toggle('scroll-locked', sidebarOpen || modalOpen);
+}
+
+const isStaff = () => state.user && (state.user.role === 'doctor' || state.user.role === 'admin');
+const stale = (rid) => rid !== state.renderId;
+
+function loadingHTML() {
+  return `<div class="flex h-64 items-center justify-center"><div class="spinner"></div></div>`;
+}
+
+function emptyHTML(iconName, title, text = '') {
+  return `<div class="flex flex-col items-center justify-center px-6 py-12 text-center">
+    <div class="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">${icon(iconName, 'h-6 w-6')}</div>
+    <p class="mt-3 font-medium text-slate-700">${esc(title)}</p>
+    ${text ? `<p class="mt-1 max-w-sm text-sm text-slate-500">${esc(text)}</p>` : ''}
+  </div>`;
+}
+
+function errorHTML(message) {
+  return `<div class="${CLS.card} p-8 text-center">
+    <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-500">${icon('circle-alert', 'h-6 w-6')}</div>
+    <p class="mt-3 font-semibold text-slate-800">Something went wrong</p>
+    <p class="mt-1 text-sm text-slate-500">${esc(message)}</p>
+    <button class="${CLS.btnSecondary} mt-4" onclick="router()">Try again</button>
+  </div>`;
+}
+
+/* ============================================================
+ * Session
+ * The JWT lives in an HttpOnly cookie set by the server (unreadable from JS, so an XSS
+ * cannot steal it). The browser only keeps a non-sensitive flag that says "try /auth/me".
+ * ============================================================ */
+const SESSION_HINT_KEY = 'ht_session';
+const isLoggedIn = () => Boolean(state.user);
+
+function hasSessionHint() {
+  try {
+    // Older versions stored the JWT here: remove it so it no longer sits in storage.
+    localStorage.removeItem('ht_token');
+    localStorage.removeItem('ht_user');
+    return localStorage.getItem(SESSION_HINT_KEY) === '1';
+  } catch {
+    return true; // storage blocked: just ask the server
+  }
+}
+
+function saveSession(user) {
+  state.user = user;
+  try { localStorage.setItem(SESSION_HINT_KEY, '1'); } catch { /* storage unavailable */ }
+}
+
+function clearSession() {
+  state.user = null;
+  state.ranges = null;
+  state.doctors = null;
+  try { localStorage.removeItem(SESSION_HINT_KEY); } catch { /* storage unavailable */ }
+}
+
+/* ============================================================
+ * API client
+ * ============================================================ */
+async function api(path, { method = 'GET', body } = {}) {
+  const headers = { Accept: 'application/json' };
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+
+  let res;
+  try {
+    // Same-origin requests send the HttpOnly session cookie automatically.
+    res = await fetch(API_BASE + path, { method, headers, credentials: 'same-origin', body: body !== undefined ? JSON.stringify(body) : undefined });
+  } catch {
+    throw new Error('Cannot reach the server. Is it running?');
+  }
+
+  let json = null;
+  try { json = await res.json(); } catch { /* empty body */ }
+
+  if (res.status === 401 && isLoggedIn()) {
+    logout();
+    throw new Error('Your session has expired. Please sign in again.');
+  }
+  if (res.status === 429) {
+    const wait = Number(res.headers.get('Retry-After')) || 60;
+    const err = new Error(`Too many requests. Please wait ${wait} second${wait === 1 ? '' : 's'} and try again.`);
+    err.status = 429;
+    throw err;
+  }
+  if (!res.ok) {
+    const message = json?.error?.message || `Request failed (${res.status})`;
+    const details = json?.error?.details;
+    const err = new Error(Array.isArray(details) ? `${message}: ${details.join('; ')}` : message);
+    err.status = res.status;
+    throw err;
+  }
+  return json;
+}
+
+async function getDoctors() {
+  if (!state.doctors) state.doctors = (await api('/auth/doctors')).data;
+  return state.doctors;
+}
+
+async function loadRanges() {
+  if (!state.ranges) {
+    try { state.ranges = (await api('/health-metrics/ranges')).data.ranges; } catch { state.ranges = {}; }
+  }
+  return state.ranges;
+}
+
+/* ============================================================
+ * Toasts & modals
+ * ============================================================ */
+function toast(message, type = 'success') {
+  const styles = {
+    // 700 shades keep white text above WCAG AA contrast (4.5:1).
+    success: ['bg-emerald-700', 'circle-check'],
+    error: ['bg-red-700', 'circle-alert'],
+    warning: ['bg-amber-700', 'triangle-alert'],
+    info: ['bg-slate-800', 'info'],
+  };
+  const [color, iconName] = styles[type] || styles.info;
+  const el = document.createElement('div');
+  el.className = `pointer-events-auto flex w-full max-w-sm items-start gap-2.5 rounded-lg px-4 py-3 text-sm text-white shadow-lg modal-enter sm:w-auto ${color}`;
+  el.innerHTML = `${icon(iconName, 'mt-0.5 h-4 w-4')}<span></span>`;
+  el.lastElementChild.textContent = message;
+  $('#toast-root').appendChild(el);
+  setTimeout(() => {
+    el.style.transition = 'opacity .3s, transform .3s';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(6px)';
+    setTimeout(() => el.remove(), 300);
+  }, 3800);
+}
+
+/**
+ * Opens a modal. If onSubmit is provided the body is wrapped in a form.
+ * extraActions: HTML for buttons rendered on the left side of the footer.
+ */
+let modalReturnFocus = null;
+
+function openModal({ title, body, submitLabel = 'Save', onSubmit, size = 'max-w-lg', extraActions = '', submitClass = CLS.btnPrimary }) {
+  const root = $('#modal-root');
+  // Remember the trigger so focus can go back to it when the modal closes.
+  if (!root.children.length) modalReturnFocus = document.activeElement;
+  root.innerHTML = `
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+      <div class="absolute inset-0 bg-slate-900/60 overlay-enter" data-close></div>
+      <div role="dialog" aria-modal="true" aria-labelledby="modal-title" class="relative flex max-h-[92vh] w-full ${size} flex-col rounded-xl bg-white shadow-xl modal-enter">
+        <div class="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 sm:px-6">
+          <h3 id="modal-title" class="text-lg font-semibold text-slate-900">${esc(title)}</h3>
+          <button type="button" data-close class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" aria-label="Close">${icon('x', 'h-5 w-5')}</button>
+        </div>
+        <form id="modal-form" class="flex min-h-0 flex-col">
+          <div class="scrollbar-thin min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6">${body}</div>
+          <div id="modal-error" role="alert" class="mx-5 mb-3 hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 sm:mx-6"></div>
+          <div class="flex flex-col gap-3 rounded-b-xl border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            ${extraActions ? `<div class="flex flex-wrap gap-2">${extraActions}</div>` : '<span class="hidden sm:block"></span>'}
+            <div class="flex gap-2 [&>button]:flex-1 sm:[&>button]:flex-none">
+              <button type="button" data-close class="${CLS.btnSecondary}">${onSubmit ? 'Cancel' : 'Close'}</button>
+              ${onSubmit ? `<button type="submit" id="modal-submit" class="${submitClass}">${esc(submitLabel)}</button>` : ''}
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>`;
+  syncScrollLock();
+
+  $$('[data-close]', root).forEach((el) => el.addEventListener('click', closeModal));
+  const form = $('#modal-form', root);
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!onSubmit) return;
+    const submit = $('#modal-submit', root);
+    submit.disabled = true;
+    hideModalError();
+    try {
+      await onSubmit(new FormData(form), form);
+    } catch (err) {
+      showModalError(err.message);
+    } finally {
+      if (submit.isConnected) submit.disabled = false;
+    }
+  });
+  const firstInput = $('input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea', form);
+  if (firstInput) setTimeout(() => firstInput.focus(), 50);
+  return root;
+}
+
+function closeModal() {
+  const root = $('#modal-root');
+  if (!root.children.length) return;
+  root.innerHTML = '';
+  syncScrollLock();
+  // Only restore focus if the trigger is still on the page (views re-render after saving).
+  if (modalReturnFocus?.isConnected) modalReturnFocus.focus();
+  modalReturnFocus = null;
+}
+function showModalError(message) { const el = $('#modal-error'); if (el) { el.textContent = message; el.classList.remove('hidden'); } }
+function hideModalError() { const el = $('#modal-error'); if (el) el.classList.add('hidden'); }
+
+function confirmModal({ title, message, confirmLabel = 'Confirm', danger = false }) {
+  return new Promise((resolve) => {
+    let resolved = false;
+    openModal({
+      title,
+      size: 'max-w-md',
+      body: `<p class="text-sm text-slate-600">${esc(message)}</p>`,
+      submitLabel: confirmLabel,
+      submitClass: danger ? CLS.btnDanger : CLS.btnPrimary,
+      onSubmit: async () => { resolved = true; closeModal(); resolve(true); },
+    });
+    const observer = new MutationObserver(() => {
+      if (!$('#modal-root').children.length) { observer.disconnect(); if (!resolved) resolve(false); }
+    });
+    observer.observe($('#modal-root'), { childList: true });
+  });
+}
+
+document.addEventListener('keydown', (e) => {
+  const dialog = $('#modal-root [role=dialog]');
+  if (e.key === 'Escape') {
+    if (dialog) closeModal();
+    else closeSidebar();
+    return;
+  }
+  // Keep Tab focus inside the open modal.
+  if (e.key === 'Tab' && dialog) {
+    const focusable = $$('a[href], button:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled]), textarea:not([disabled])', dialog)
+      .filter((el) => el.offsetParent !== null);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) { e.preventDefault(); first.focus(); }
+  }
+});
+
+/* ============================================================
+ * Charts
+ * ============================================================ */
+const rangeBandsPlugin = {
+  id: 'rangeBands',
+  beforeDatasetsDraw(chart, _args, opts) {
+    const bands = opts?.bands || [];
+    const lines = opts?.lines || [];
+    if (!bands.length && !lines.length) return;
+    const { ctx, chartArea, scales: { y } } = chart;
+    if (!chartArea || !y) return;
+    const { left, right, top, bottom } = chartArea;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(left, top, right - left, bottom - top);
+    ctx.clip();
+    for (const b of bands) {
+      const from = b.from === null ? y.min : Math.max(b.from, y.min);
+      const to = b.to === null ? y.max : Math.min(b.to, y.max);
+      if (to <= from) continue;
+      const y1 = y.getPixelForValue(to);
+      const y2 = y.getPixelForValue(from);
+      ctx.fillStyle = b.color;
+      ctx.fillRect(left, y1, right - left, y2 - y1);
+    }
+    for (const l of lines) {
+      const py = y.getPixelForValue(l.value);
+      if (py < top || py > bottom) continue;
+      ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = l.color;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(left, py);
+      ctx.lineTo(right, py);
+      ctx.stroke();
+      if (l.label) {
+        ctx.setLineDash([]);
+        ctx.fillStyle = l.color;
+        ctx.font = '10px ui-sans-serif, system-ui, sans-serif';
+        ctx.fillText(l.label, left + 6, py - 4);
+      }
+    }
+    ctx.restore();
+  },
+};
+if (window.Chart) Chart.register(rangeBandsPlugin);
+
+function bandsFor(range) {
+  if (!range) return [];
+  const [nMin, nMax] = range.normal;
+  const { below, above } = range.critical;
+  const green = 'rgba(16, 185, 129, 0.10)';
+  const amber = 'rgba(245, 158, 11, 0.12)';
+  const red = 'rgba(239, 68, 68, 0.10)';
+  const bands = [{ from: nMin, to: nMax, color: green }];
+  bands.push({ from: below, to: nMin, color: amber });
+  if (above !== null) bands.push({ from: nMax, to: above, color: amber });
+  if (below !== null) bands.push({ from: null, to: below, color: red });
+  if (above !== null) bands.push({ from: above, to: null, color: red });
+  return bands;
+}
+
+function destroyCharts() {
+  state.charts.forEach((c) => c.destroy());
+  state.charts = [];
+}
+
+function createMetricChart(canvas, type, readings, { compact = false } = {}) {
+  if (!window.Chart || !readings.length) return null;
+  const meta = METRIC_META[type];
+  const range = state.ranges?.[type] || null;
+  const diaRange = type === 'blood_pressure' ? state.ranges?.blood_pressure_diastolic : null;
+
+  const values = readings.flatMap((r) => [r.value, r.secondary_value]).filter((v) => v !== null && v !== undefined);
+  let min = Math.min(...values);
+  let max = Math.max(...values);
+  if (range) { min = Math.min(min, range.normal[0]); max = Math.max(max, range.normal[1]); }
+  if (diaRange) min = Math.min(min, diaRange.normal[0]);
+  const pad = Math.max((max - min) * 0.15, type === 'temperature' ? 0.3 : 2);
+  // Suggested bounds only: Chart.js rounds them out to clean tick values.
+  const yMin = min - pad;
+  const yMax = max + pad;
+
+  const pointColors = readings.map((r) => STATUS_STYLES[r.status]?.color || '#4f46e5');
+  const common = {
+    pointBorderColor: '#ffffff',
+    pointBorderWidth: 1.5,
+    pointRadius: compact ? 3 : 4.5,
+    pointHoverRadius: 7,
+    borderWidth: 2,
+    tension: 0.3,
+    spanGaps: true,
+    clip: 8,
+  };
+  const datasets = [{
+    ...common,
+    label: type === 'blood_pressure' ? 'Systolic' : meta.label,
+    data: readings.map((r) => r.value),
+    borderColor: '#4f46e5',
+    backgroundColor: '#4f46e5',
+    pointBackgroundColor: pointColors,
+  }];
+  if (type === 'blood_pressure') {
+    datasets.push({
+      ...common,
+      label: 'Diastolic',
+      data: readings.map((r) => r.secondary_value),
+      borderColor: '#0ea5e9',
+      backgroundColor: '#0ea5e9',
+      pointBackgroundColor: pointColors,
+    });
+  }
+
+  // On narrow charts the inline labels collide with the data points; the legend below the chart explains the lines.
+  const showLineLabels = !compact && (canvas.parentElement?.clientWidth || 0) >= 520;
+  const lines = diaRange ? [
+    { value: diaRange.normal[0], color: 'rgba(14, 165, 233, 0.7)', label: showLineLabels ? `Diastolic ${diaRange.normal[0]}` : '' },
+    { value: diaRange.normal[1], color: 'rgba(14, 165, 233, 0.7)', label: showLineLabels ? `Diastolic ${diaRange.normal[1]}` : '' },
+  ] : [];
+
+  const chart = new Chart(canvas, {
+    type: 'line',
+    data: { labels: readings.map((r) => fmt.shortDate(r.recorded_at)), datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 400 },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          display: type === 'blood_pressure',
+          position: 'bottom',
+          labels: {
+            usePointStyle: true,
+            boxWidth: 8,
+            boxHeight: 8,
+            pointStyleWidth: 8,
+            color: '#475569',
+            // Points are colored by status, so build the legend from each line's color instead.
+            generateLabels: (c) => c.data.datasets.map((ds, i) => ({
+              text: ds.label,
+              fillStyle: ds.borderColor,
+              strokeStyle: ds.borderColor,
+              fontColor: '#475569',
+              pointStyle: 'circle',
+              hidden: !c.isDatasetVisible(i),
+              datasetIndex: i,
+            })),
+          },
+        },
+        tooltip: {
+          backgroundColor: '#0f172a',
+          padding: 12,
+          cornerRadius: 8,
+          titleFont: { weight: '600' },
+          bodySpacing: 4,
+          callbacks: {
+            title: (items) => fmt.dateTime(readings[items[0].dataIndex].recorded_at),
+            label: (ctx) => ` ${ctx.dataset.label}: ${ctx.parsed.y ?? '—'} ${meta.unit}`,
+            afterBody: (items) => {
+              const r = readings[items[0].dataIndex];
+              const out = [`Status: ${r.status.toUpperCase()}`];
+              if (r.recorded_by_name) out.push(`Recorded by: ${r.recorded_by_name}`);
+              if (r.notes) out.push(`Note: ${r.notes}`);
+              return out;
+            },
+          },
+        },
+        rangeBands: { bands: bandsFor(range), lines },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#64748b', maxTicksLimit: compact ? 5 : 10, font: { size: 11 } } },
+        y: { suggestedMin: yMin, suggestedMax: yMax, max: type === 'oxygen_saturation' ? 100 : undefined, grid: { color: 'rgba(148, 163, 184, 0.15)' }, ticks: { color: '#64748b', font: { size: 11 } } },
+      },
+    },
+  });
+  state.charts.push(chart);
+  return chart;
+}
+
+function bandsLegendHTML(type) {
+  if (!state.ranges?.[type]) return '<span class="text-xs text-slate-400">No clinical alert ranges for this metric</span>';
+  const item = (color, label) => `<span class="inline-flex items-center gap-1.5"><span class="h-3 w-3 rounded-sm ${color}"></span>${label}</span>`;
+  return `<div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+    ${item('bg-emerald-200', 'Normal')}${item('bg-amber-200', 'Warning')}${item('bg-red-200', 'Critical')}
+    ${type === 'blood_pressure' ? '<span class="inline-flex items-center gap-1.5"><span class="w-4 border-t-2 border-dashed border-sky-400"></span>Diastolic normal</span>' : ''}
+  </div>`;
+}
+
+/* ============================================================
+ * Auth screen
+ * ============================================================ */
+function showAuth() {
+  document.title = 'Sign in · HealthTrack';
+  $('#app-shell').classList.add('hidden');
+  $('#auth-screen').classList.remove('hidden');
+  closeModal();
+}
+
+function showApp() {
+  $('#auth-screen').classList.add('hidden');
+  $('#app-shell').classList.remove('hidden');
+}
+
+function setAuthPanel(panel) {
+  $('#login-panel').classList.toggle('hidden', panel !== 'login');
+  $('#register-panel').classList.toggle('hidden', panel !== 'register');
+  setError($('#login-error'));
+  setError($('#register-error'));
+  const firstField = $(panel === 'login' ? '#login-email' : '#reg-name');
+  if (!$('#auth-screen').classList.contains('hidden')) firstField.focus();
+}
+
+async function doLogin(email, password) {
+  const res = await api('/auth/login', { method: 'POST', body: { email, password } });
+  await onAuthenticated(res.data);
+}
+
+async function onAuthenticated({ user }) {
+  // The response body also carries the JWT (for API clients); the dashboard ignores it and relies on the cookie.
+  saveSession(user);
+  await loadRanges();
+  setupShell();
+  if (location.hash === '#/dashboard') router();
+  else location.hash = '#/dashboard';
+  toast(`Welcome, ${user.name}`);
+}
+
+/** Adds a show/hide button to every password field inside `root`. */
+function addPasswordToggles(root) {
+  $$('input[type=password]', root).forEach((input) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'relative';
+    input.replaceWith(wrap);
+    wrap.appendChild(input);
+    input.classList.add('pr-10');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-lg text-slate-400 hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500';
+    const sync = () => {
+      const shown = input.type === 'text';
+      btn.setAttribute('aria-label', shown ? 'Hide password' : 'Show password');
+      btn.setAttribute('aria-pressed', String(shown));
+      btn.innerHTML = icon(shown ? 'eye-off' : 'eye');
+    };
+    btn.addEventListener('click', () => { input.type = input.type === 'password' ? 'text' : 'password'; sync(); input.focus(); });
+    sync();
+    wrap.appendChild(btn);
+    // Never leave a password visible after the form is reset or submitted.
+    input.form?.addEventListener('reset', () => { input.type = 'password'; sync(); });
+  });
+}
+
+function initAuthScreen() {
+  addPasswordToggles($('#auth-screen'));
+  $('#quick-logins').innerHTML = QUICK_LOGINS.map((q, i) => `
+    <button type="button" data-quick="${i}" class="flex w-full items-center gap-3 rounded-lg border border-slate-200 px-4 py-2.5 text-left transition hover:border-indigo-300 hover:bg-indigo-50">
+      <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">${icon(q.icon, 'h-5 w-5')}</span>
+      <span class="flex-1"><span class="block text-sm font-medium text-slate-800">${esc(q.label)}</span><span class="block text-xs text-slate-500">${esc(q.email)} · ${esc(q.hint)}</span></span>
+      ${icon('chevron-right', 'h-4 w-4 text-slate-300')}
+    </button>`).join('');
+
+  $$('[data-quick]').forEach((btn) => btn.addEventListener('click', async () => {
+    const q = QUICK_LOGINS[Number(btn.dataset.quick)];
+    btn.disabled = true;
+    setError($('#login-error'));
+    try {
+      await doLogin(q.email, q.password);
+    } catch (err) {
+      setError($('#login-error'), err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }));
+
+  $('#show-register').addEventListener('click', () => setAuthPanel('register'));
+  $('#show-login').addEventListener('click', () => setAuthPanel('login'));
+
+  $('#login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const btn = $('button[type=submit]', form);
+    const data = new FormData(form);
+    btn.disabled = true;
+    setError($('#login-error'));
+    try {
+      await doLogin(data.get('email'), data.get('password'));
+      form.reset();
+    } catch (err) {
+      setError($('#login-error'), err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  $('#register-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const btn = $('button[type=submit]', form);
+    const data = Object.fromEntries(new FormData(form));
+    btn.disabled = true;
+    setError($('#register-error'));
+    try {
+      const res = await api('/auth/register', { method: 'POST', body: data });
+      form.reset();
+      setAuthPanel('login');
+      await onAuthenticated(res.data);
+    } catch (err) {
+      setError($('#register-error'), err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+}
+
+/* ============================================================
+ * Shell: sidebar, navigation, unread badge
+ * ============================================================ */
+function navItems() {
+  const role = state.user?.role;
+  const items = [{ key: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard', href: '#/dashboard' }];
+  if (role === 'patient') {
+    if (state.user.patientId) items.push({ key: 'profile', label: 'My Profile', icon: 'circle-user-round', href: `#/patients/${state.user.patientId}` });
+  } else {
+    items.push({ key: 'patients', label: 'Patients', icon: 'users', href: '#/patients' });
+  }
+  items.push(
+    { key: 'appointments', label: 'Appointments', icon: 'calendar-days', href: '#/appointments' },
+    { key: 'metrics', label: 'Health Metrics', icon: 'chart-line', href: '#/metrics' },
+    { key: 'notifications', label: 'Notifications', icon: 'bell', href: '#/notifications', badge: true },
+  );
+  return items;
+}
+
+function setupShell() {
+  const u = state.user;
+  $('#user-avatar').textContent = initials(u.name);
+  $('#user-name').textContent = u.name;
+  const role = $('#user-role');
+  role.textContent = u.role;
+  role.className = `mt-0.5 inline-block rounded-full px-2 py-0.5 text-xs font-medium capitalize ${ROLE_STYLES[u.role] || ''}`;
+
+  $('#nav').innerHTML = navItems().map((item) => `
+    <a href="${item.href}" data-nav="${item.key}" class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900">
+      ${icon(item.icon, 'h-5 w-5')}
+      <span>${item.label}</span>
+      ${item.badge ? '<span data-unread-badge class="ml-auto hidden rounded-full bg-red-500 px-2 py-0.5 text-xs font-semibold text-white"></span>' : ''}
+    </a>`).join('');
+
+  clearInterval(state.unreadTimer);
+  state.unreadTimer = setInterval(refreshUnreadBadge, 60_000);
+  refreshUnreadBadge();
+}
+
+function setActiveNav(section) {
+  $$('[data-nav]').forEach((a) => {
+    const active = a.dataset.nav === section;
+    a.classList.toggle('bg-indigo-50', active);
+    a.classList.toggle('text-indigo-700', active);
+    a.classList.toggle('text-slate-600', !active);
+    if (active) a.setAttribute('aria-current', 'page');
+    else a.removeAttribute('aria-current');
+  });
+}
+
+async function refreshUnreadBadge() {
+  // Skip polling while the tab is in the background; it refreshes on visibilitychange.
+  if (!isLoggedIn() || document.hidden) return;
+  try {
+    const { data } = await api('/notifications/unread-count');
+    $$('[data-unread-badge]').forEach((el) => {
+      el.textContent = data.count > 99 ? '99+' : String(data.count);
+      el.classList.toggle('hidden', data.count === 0);
+    });
+  } catch { /* ignore */ }
+}
+
+function openSidebar() {
+  $('#sidebar').classList.remove('-translate-x-full');
+  $('#sidebar-overlay').classList.remove('hidden');
+  $('#menu-btn').setAttribute('aria-expanded', 'true');
+  syncScrollLock();
+  $('#nav a')?.focus();
+}
+
+function closeSidebar() {
+  const wasOpen = !$('#sidebar-overlay').classList.contains('hidden');
+  $('#sidebar').classList.add('-translate-x-full');
+  $('#sidebar-overlay').classList.add('hidden');
+  $('#menu-btn').setAttribute('aria-expanded', 'false');
+  syncScrollLock();
+  if (wasOpen && $('#sidebar').contains(document.activeElement)) $('#menu-btn').focus();
+}
+
+function logout() {
+  // Ask the server to clear the HttpOnly cookie (JS cannot delete it). keepalive: survives a page unload.
+  fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'same-origin', keepalive: true }).catch(() => {});
+  clearInterval(state.unreadTimer);
+  destroyCharts();
+  clearSession();
+  showAuth();
+  setAuthPanel('login');
+  history.replaceState(null, '', location.pathname);
+}
+
+/* ============================================================
+ * Router
+ * ============================================================ */
+function parseHash() {
+  const raw = location.hash.replace(/^#\/?/, '');
+  const [path, query = ''] = raw.split('?');
+  return { parts: path.split('/').filter(Boolean), params: new URLSearchParams(query) };
+}
+
+async function router() {
+  if (!isLoggedIn()) { showAuth(); return; }
+  showApp();
+  closeSidebar();
+  closeModal();
+  destroyCharts();
+
+  const rid = ++state.renderId;
+  const { parts, params } = parseHash();
+  const section = parts[0] || 'dashboard';
+  const view = $('#view');
+
+  const isOwnProfile = section === 'patients' && state.user.role === 'patient' && Number(parts[1]) === state.user.patientId;
+  setActiveNav(isOwnProfile ? 'profile' : section);
+  document.title = `${isOwnProfile ? 'My Profile' : VIEW_TITLES[section] || 'Dashboard'} · HealthTrack`;
+  window.scrollTo(0, 0);
+
+  view.classList.remove('fade-in');
+  void view.offsetWidth;
+  view.classList.add('fade-in');
+  view.innerHTML = loadingHTML();
+
+  try {
+    if (section === 'patients' && parts[1]) {
+      await renderPatientDetail(view, Number(parts[1]), rid);
+    } else if (section === 'patients') {
+      if (state.user.role === 'patient') { location.hash = '#/dashboard'; return; }
+      await renderPatients(view, rid);
+    } else if (section === 'appointments') {
+      await renderAppointments(view, rid);
+    } else if (section === 'metrics') {
+      await renderMetrics(view, rid, params);
+    } else if (section === 'notifications') {
+      await renderNotifications(view, rid);
+    } else {
+      await renderDashboard(view, rid);
+    }
+  } catch (err) {
+    if (!stale(rid) && isLoggedIn()) view.innerHTML = errorHTML(err.message);
+  }
+}
+
+function pageHeader(title, subtitle = '', actions = '') {
+  return `<div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h1 class="text-2xl font-semibold text-slate-900">${title}</h1>
+      ${subtitle ? `<p class="mt-1 text-sm text-slate-500">${subtitle}</p>` : ''}
+    </div>
+    ${actions ? `<div class="flex flex-wrap items-center gap-2">${actions}</div>` : ''}
+  </div>`;
+}
+
+/* ============================================================
+ * View: Dashboard
+ * ============================================================ */
+function statCard({ label, value, sub, icon: iconName, accent, href }) {
+  return `<a href="${href}" class="${CLS.card} ${CLS.focusRing} group block p-5 transition hover:-translate-y-0.5 hover:shadow-md">
+    <div class="flex items-start justify-between">
+      <div>
+        <p class="text-sm font-medium text-slate-500">${esc(label)}</p>
+        <p class="mt-2 text-3xl font-semibold text-slate-900">${esc(value)}</p>
+      </div>
+      <div class="flex h-11 w-11 items-center justify-center rounded-xl ${accent}">${icon(iconName, 'h-5 w-5')}</div>
+    </div>
+    <p class="mt-3 text-xs text-slate-500">${esc(sub)}</p>
+  </a>`;
+}
+
+function appointmentRowHTML(a, { showPatient = true, showDoctor = true } = {}) {
+  return `<button type="button" data-appt-id="${a.id}" class="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-slate-50 sm:gap-4 sm:px-5 ${CLS.focusRing}">
+    <div class="w-14 shrink-0 rounded-lg bg-indigo-50 py-1.5 text-center">
+      <div class="text-[11px] font-medium uppercase text-indigo-500">${esc(fmt.month(a.date_time))}</div>
+      <div class="text-lg font-semibold leading-tight text-indigo-700">${parseDate(a.date_time).getDate()}</div>
+    </div>
+    <div class="min-w-0 flex-1">
+      <div class="flex flex-wrap items-center gap-2">
+        <p class="truncate font-medium text-slate-900">${esc(showPatient ? a.patient_name : a.reason || 'Appointment')}</p>
+        ${badge(a.status, APPT_STYLES[a.status])}
+      </div>
+      ${showPatient ? `<p class="truncate text-sm text-slate-500">${esc(a.reason || 'No reason provided')}</p>` : ''}
+      <p class="mt-0.5 flex items-center gap-1 text-xs text-slate-400">${icon('clock', 'h-3.5 w-3.5')} ${esc(fmt.weekday(a.date_time))} ${esc(fmt.time(a.date_time))} · ${a.duration_minutes} min${showDoctor ? ` · ${esc(a.doctor_name)}` : ''}</p>
+    </div>
+    ${icon('chevron-right', 'h-4 w-4 text-slate-300')}
+  </button>`;
+}
+
+function bindAppointmentRows(root, appointments, onChanged) {
+  $$('[data-appt-id]', root).forEach((el) => el.addEventListener('click', () => {
+    const appt = appointments.find((a) => a.id === Number(el.dataset.apptId));
+    if (appt) openAppointmentDetail(appt, onChanged);
+  }));
+}
+
+async function renderDashboard(view, rid) {
+  const role = state.user.role;
+  const [pRes, aRes, nRes, uRes] = await Promise.all([
+    api('/patients'),
+    api('/appointments'),
+    api('/notifications?limit=100'),
+    api('/notifications/unread-count'),
+  ]);
+  if (stale(rid)) return;
+
+  const patients = pRes.data;
+  const appointments = aRes.data;
+  const notifications = nRes.data;
+  const unread = uRes.data;
+  const now = new Date();
+  const todayKey = localDateKey();
+
+  const todays = appointments.filter((a) => a.date_time.slice(0, 10) === todayKey && a.status !== 'cancelled');
+  const activeUpcoming = appointments.filter((a) => parseDate(a.date_time) >= now && ['scheduled', 'confirmed'].includes(a.status));
+  const upcoming = activeUpcoming.slice(0, 5);
+  const alerts = notifications.filter((n) => n.severity === 'warning' || n.severity === 'critical').slice(0, 5);
+  const metricsWeek = patients.reduce((sum, p) => sum + (p.metrics_this_week || 0), 0);
+  const mostActive = [...patients].sort((a, b) => b.metrics_count - a.metrics_count)[0];
+  const nextToday = todays.find((a) => parseDate(a.date_time) >= now);
+
+  const hour = now.getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+
+  const cards = [
+    role === 'patient'
+      ? { label: 'Upcoming appointments', value: activeUpcoming.length, sub: activeUpcoming[0] ? `Next: ${fmt.dateTime(activeUpcoming[0].date_time)}` : 'Nothing scheduled', icon: 'calendar-days', accent: 'bg-indigo-50 text-indigo-600', href: '#/appointments' }
+      : { label: 'Total patients', value: patients.length, sub: role === 'doctor' ? 'Assigned to you' : 'Registered in the system', icon: 'users', accent: 'bg-indigo-50 text-indigo-600', href: '#/patients' },
+    { label: "Today's appointments", value: todays.length, sub: nextToday ? `Next at ${fmt.time(nextToday.date_time)}` : todays.length ? 'All done for today' : 'No appointments today', icon: 'calendar-clock', accent: 'bg-sky-50 text-sky-600', href: '#/appointments' },
+    { label: 'Unread notifications', value: unread.count, sub: `${unread.critical} critical`, icon: 'bell', accent: unread.critical ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600', href: '#/notifications' },
+    { label: 'Metrics this week', value: metricsWeek, sub: 'Readings in the last 7 days', icon: 'chart-line', accent: 'bg-emerald-50 text-emerald-600', href: '#/metrics' },
+  ];
+
+  view.innerHTML = `
+    ${pageHeader(`${greeting}, ${esc(state.user.name)}`, esc(now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })))}
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">${cards.map(statCard).join('')}</div>
+
+    <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <section class="${CLS.card}">
+        <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <h2 class="font-semibold text-slate-900">Upcoming appointments</h2>
+          <a href="#/appointments" class="text-sm font-medium text-indigo-600 hover:text-indigo-700">View all</a>
+        </div>
+        <div id="dash-upcoming" class="divide-y divide-slate-100">
+          ${upcoming.length ? upcoming.map((a) => appointmentRowHTML(a, { showPatient: role !== 'patient', showDoctor: role !== 'doctor' })).join('') : emptyHTML('calendar-x', 'No upcoming appointments')}
+        </div>
+      </section>
+
+      <section class="${CLS.card}">
+        <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <h2 class="font-semibold text-slate-900">Recent alerts</h2>
+          <a href="#/notifications" class="text-sm font-medium text-indigo-600 hover:text-indigo-700">View all</a>
+        </div>
+        <div class="divide-y divide-slate-100">
+          ${alerts.length ? alerts.map((n) => `
+            <a href="${n.metric_type ? `#/metrics?patient=${n.patient_id}&type=${n.metric_type}` : `#/patients/${n.patient_id}`}" class="flex items-start gap-3 border-l-4 px-4 py-3 transition hover:bg-slate-50 sm:px-5 ${CLS.focusRing}" style="${SEVERITY_STYLES[n.severity].edge}">
+              ${icon(SEVERITY_STYLES[n.severity].icon, `mt-0.5 h-5 w-5 ${SEVERITY_STYLES[n.severity].iconColor}`)}
+              <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <p class="truncate text-sm font-medium text-slate-900">${esc(n.title)}</p>
+                  ${badge(n.severity, SEVERITY_STYLES[n.severity].badge)}
+                </div>
+                <p class="truncate text-xs text-slate-500">${esc(n.patient_name)} · ${esc(fmt.relative(n.created_at))}</p>
+              </div>
+              ${n.read ? '' : '<span class="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-indigo-500" title="Unread"></span>'}
+            </a>`).join('') : emptyHTML('circle-check', 'No recent alerts', 'All readings are within normal ranges.')}
+        </div>
+      </section>
+    </div>
+
+    <section class="${CLS.card} mt-6 p-5">
+      <div class="mb-4 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 class="font-semibold text-slate-900">Latest metrics</h2>
+          <p id="dash-chart-subtitle" class="text-sm text-slate-500">${mostActive && role !== 'patient' ? `Most active patient: ${esc(mostActive.name)}` : ''}</p>
+        </div>
+        ${mostActive ? `<a id="dash-chart-link" href="#/metrics?patient=${mostActive.id}" class="inline-flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-700">Open metrics ${icon('arrow-right')}</a>` : ''}
+      </div>
+      <div class="relative h-56"><canvas id="dash-chart"></canvas><div id="dash-chart-empty" class="absolute inset-0 hidden"></div></div>
+    </section>`;
+
+  bindAppointmentRows($('#dash-upcoming'), upcoming, () => router());
+
+  if (!mostActive || !mostActive.metrics_count) {
+    $('#dash-chart-empty').classList.remove('hidden');
+    $('#dash-chart-empty').innerHTML = emptyHTML('chart-line','No metrics recorded yet');
+    return;
+  }
+
+  const metricsRes = await api(`/health-metrics/${mostActive.id}`);
+  if (stale(rid)) return;
+  const counts = {};
+  metricsRes.data.forEach((m) => { counts[m.metric_type] = (counts[m.metric_type] || 0) + 1; });
+  const type = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+  const readings = metricsRes.data.filter((m) => m.metric_type === type).slice(-20);
+  $('#dash-chart-subtitle').textContent = role === 'patient'
+    ? `${METRIC_META[type].label} · your last ${readings.length} readings`
+    : `${METRIC_META[type].label} · ${mostActive.name} (most active patient) · last ${readings.length} readings`;
+  $('#dash-chart-link').href = `#/metrics?patient=${mostActive.id}&type=${type}`;
+  createMetricChart($('#dash-chart'), type, readings, { compact: true });
+}
+
+/* ============================================================
+ * View: Patients list
+ * ============================================================ */
+async function renderPatients(view, rid) {
+  const { data: patients } = await api('/patients');
+  if (stale(rid)) return;
+
+  view.innerHTML = `
+    ${pageHeader('Patients', `${patients.length} ${state.user.role === 'doctor' ? 'patients assigned to you' : 'patients in the system'}`,
+      `<input id="patient-search" type="search" aria-label="Search patients" placeholder="Search by name, email or blood type…" class="${CLS.input} sm:w-72" />
+       <button id="add-patient-btn" class="${CLS.btnPrimary}">${icon('user-plus')} Add patient</button>`)}
+    <div class="${CLS.card} overflow-hidden">
+      <!-- Cards on phones/tablets, full table from lg up -->
+      <ul id="patients-cards" class="divide-y divide-slate-100 lg:hidden"></ul>
+      <div class="scrollbar-thin hidden overflow-x-auto lg:block">
+        <table class="min-w-full text-sm">
+          <thead class="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <tr>
+              <th class="px-5 py-3">Patient</th>
+              <th class="px-5 py-3">Age</th>
+              <th class="px-5 py-3">Blood type</th>
+              <th class="px-5 py-3">Assigned doctor</th>
+              <th class="px-5 py-3">Last appointment</th>
+              <th class="px-5 py-3">Next appointment</th>
+              <th class="px-5 py-3 text-right">Readings (7d)</th>
+            </tr>
+          </thead>
+          <tbody id="patients-tbody" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+      <div id="patients-empty" class="hidden">${emptyHTML('search-x','No patients found')}</div>
+    </div>`;
+
+  const tbody = $('#patients-tbody');
+  const cards = $('#patients-cards');
+  const avatar = (p) => `<div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700">${esc(initials(p.name))}</div>`;
+  const allergyBadge = (p) => p.allergies.length
+    ? `<span class="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-600" title="${esc(p.allergies.join(', '))}">${icon('triangle-alert', 'h-3 w-3')} ${p.allergies.length} allerg${p.allergies.length === 1 ? 'y' : 'ies'}</span>`
+    : '';
+  const bloodBadge = (p) => p.blood_type ? `<span class="rounded-md bg-red-50 px-2 py-0.5 font-mono text-xs font-semibold text-red-700">${esc(p.blood_type)}</span>` : '';
+  const muted = '<span class="text-slate-400">—</span>';
+
+  function renderRows(list) {
+    tbody.innerHTML = list.map((p) => `
+      <tr data-patient-id="${p.id}" tabindex="0" aria-label="Open ${esc(p.name)}" class="cursor-pointer transition even:bg-slate-50/60 hover:bg-indigo-50/60 ${CLS.focusRing}">
+        <td class="px-5 py-3">
+          <div class="flex items-center gap-3">
+            ${avatar(p)}
+            <div class="min-w-0">
+              <p class="font-medium text-slate-900">${esc(p.name)}</p>
+              <p class="truncate text-xs text-slate-500">${esc(p.email)}</p>
+            </div>
+            ${allergyBadge(p)}
+          </div>
+        </td>
+        <td class="whitespace-nowrap px-5 py-3 text-slate-700">${p.age} <span class="text-xs capitalize text-slate-400">· ${esc(p.gender || '—')}</span></td>
+        <td class="px-5 py-3">${bloodBadge(p) || '—'}</td>
+        <td class="whitespace-nowrap px-5 py-3 text-slate-700">${esc(p.assigned_doctor_name || 'Unassigned')}</td>
+        <td class="whitespace-nowrap px-5 py-3 text-slate-700">${p.last_appointment ? esc(fmt.date(p.last_appointment)) : muted}</td>
+        <td class="whitespace-nowrap px-5 py-3 text-slate-700">${p.next_appointment ? esc(fmt.dateTime(p.next_appointment)) : muted}</td>
+        <td class="px-5 py-3 text-right font-medium text-slate-700">${p.metrics_this_week}</td>
+      </tr>`).join('');
+
+    cards.innerHTML = list.map((p) => `
+      <li data-patient-id="${p.id}" tabindex="0" role="link" aria-label="Open ${esc(p.name)}" class="flex cursor-pointer items-start gap-3 px-4 py-3.5 transition hover:bg-indigo-50/60 ${CLS.focusRing}">
+        ${avatar(p)}
+        <div class="min-w-0 flex-1">
+          <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <p class="truncate font-medium text-slate-900">${esc(p.name)}</p>
+            ${bloodBadge(p)}${allergyBadge(p)}
+          </div>
+          <p class="truncate text-xs text-slate-500">${esc(p.email)}</p>
+          <dl class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+            <div><dt class="inline text-slate-400">Age</dt> <dd class="inline capitalize text-slate-700">${p.age} · ${esc(p.gender || '—')}</dd></div>
+            <div><dt class="inline text-slate-400">Readings 7d</dt> <dd class="inline font-medium text-slate-700">${p.metrics_this_week}</dd></div>
+            <div class="col-span-2 truncate"><dt class="inline text-slate-400">Doctor</dt> <dd class="inline text-slate-700">${esc(p.assigned_doctor_name || 'Unassigned')}</dd></div>
+            <div class="col-span-2 truncate"><dt class="inline text-slate-400">Next visit</dt> <dd class="inline text-slate-700">${p.next_appointment ? esc(fmt.dateTime(p.next_appointment)) : '—'}</dd></div>
+          </dl>
+        </div>
+        ${icon('chevron-right', 'mt-2 h-4 w-4 text-slate-300')}
+      </li>`).join('');
+
+    $('#patients-empty').classList.toggle('hidden', list.length > 0);
+    $$('[data-patient-id]', $('#view')).forEach((el) => onActivate(el, () => { location.hash = `#/patients/${el.dataset.patientId}`; }));
+  }
+  renderRows(patients);
+
+  $('#patient-search').addEventListener('input', (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    renderRows(patients.filter((p) => [p.name, p.email, p.blood_type, p.assigned_doctor_name].some((v) => String(v || '').toLowerCase().includes(q))));
+  });
+  $('#add-patient-btn').addEventListener('click', () => openCreatePatientModal());
+}
+
+async function openCreatePatientModal() {
+  const isAdmin = state.user.role === 'admin';
+  const doctors = isAdmin ? await getDoctors() : [];
+  openModal({
+    title: 'Add patient',
+    size: 'max-w-2xl',
+    submitLabel: 'Create patient',
+    body: `
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="sm:col-span-2"><label class="${CLS.label}">Full name *</label><input name="name" required maxlength="100" class="${CLS.input}" /></div>
+        <div><label class="${CLS.label}">Email *</label><input name="email" type="email" required class="${CLS.input}" /></div>
+        <div><label class="${CLS.label}">Initial password *</label><input name="password" type="password" required minlength="8" class="${CLS.input}" /></div>
+        <div><label class="${CLS.label}">Date of birth *</label><input name="date_of_birth" type="date" required max="${localDateKey()}" class="${CLS.input}" /></div>
+        <div><label class="${CLS.label}">Gender</label>
+          <select name="gender" class="${CLS.input}"><option value="">—</option><option value="female">Female</option><option value="male">Male</option><option value="other">Other</option></select></div>
+        <div><label class="${CLS.label}">Blood type</label>
+          <select name="blood_type" class="${CLS.input}"><option value="">—</option>${['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((b) => `<option>${b}</option>`).join('')}</select></div>
+        ${isAdmin ? `<div><label class="${CLS.label}">Assigned doctor</label>
+          <select name="assigned_doctor_id" class="${CLS.input}"><option value="">Unassigned</option>${doctors.map((d) => `<option value="${d.id}">${esc(d.name)}</option>`).join('')}</select></div>` : ''}
+        <div class="sm:col-span-2"><label class="${CLS.label}">Allergies <span class="font-normal text-slate-400">(comma separated)</span></label><input name="allergies" placeholder="Penicillin, Latex" class="${CLS.input}" /></div>
+        <div><label class="${CLS.label}">Emergency contact</label><input name="emergency_contact" maxlength="100" class="${CLS.input}" /></div>
+        <div><label class="${CLS.label}">Emergency phone</label><input name="emergency_phone" placeholder="+1 (555) 000-0000" class="${CLS.input}" /></div>
+      </div>`,
+    onSubmit: async (fd) => {
+      const body = {
+        name: fd.get('name'),
+        email: fd.get('email'),
+        password: fd.get('password'),
+        date_of_birth: fd.get('date_of_birth'),
+        gender: fd.get('gender') || null,
+        blood_type: fd.get('blood_type') || null,
+        allergies: String(fd.get('allergies') || '').split(',').map((s) => s.trim()).filter(Boolean),
+        emergency_contact: fd.get('emergency_contact') || null,
+        emergency_phone: fd.get('emergency_phone') || null,
+      };
+      if (isAdmin && fd.get('assigned_doctor_id')) body.assigned_doctor_id = Number(fd.get('assigned_doctor_id'));
+      const { data } = await api('/patients', { method: 'POST', body });
+      closeModal();
+      toast(`Patient ${data.name} created`);
+      location.hash = `#/patients/${data.id}`;
+    },
+  });
+  addPasswordToggles($('#modal-root'));
+}
+
+/* ============================================================
+ * View: Patient detail
+ * ============================================================ */
+async function renderPatientDetail(view, id, rid) {
+  const { data: p } = await api(`/patients/${id}`);
+  const [apptRes, summaryRes] = await Promise.allSettled([
+    api(`/appointments?patientId=${id}`),
+    api(`/health-metrics/${id}/summary`),
+  ]);
+  if (stale(rid)) return;
+
+  if (state.user.role !== 'patient') document.title = `${p.name} · HealthTrack`;
+  const appointments = apptRes.status === 'fulfilled' ? [...apptRes.value.data].reverse() : [];
+  const summary = summaryRes.status === 'fulfilled' ? summaryRes.value.data.metrics : null;
+  const isPatient = state.user.role === 'patient';
+  const isAdmin = state.user.role === 'admin';
+
+  const infoRow = (label, value) => `<div class="flex justify-between gap-4 py-2"><dt class="text-sm text-slate-500">${label}</dt><dd class="text-right text-sm font-medium text-slate-800">${value}</dd></div>`;
+  const trendIcon = { up: 'trending-up', down: 'trending-down', stable: 'minus' };
+
+  view.innerHTML = `
+    ${isPatient ? '' : `<a href="#/patients" class="mb-4 inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-indigo-600">${icon('arrow-left')} Back to patients</a>`}
+    <div class="${CLS.card} mb-6 p-5 sm:p-6">
+      <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex items-center gap-4">
+          <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xl font-semibold text-white">${esc(initials(p.name))}</div>
+          <div>
+            <h1 class="text-2xl font-semibold text-slate-900">${esc(p.name)}</h1>
+            <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-500">
+              <span>${p.age} years</span><span class="capitalize">${esc(p.gender || '—')}</span>
+              ${p.blood_type ? `<span class="inline-flex items-center gap-1 rounded-md bg-red-50 px-2 py-0.5 font-mono text-xs font-semibold text-red-700">${icon('droplet', 'h-3 w-3')} ${esc(p.blood_type)}</span>` : ''}
+              <span>${esc(p.email)}</span>
+            </p>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button id="record-metric-btn" class="${CLS.btnPrimary}">${icon('plus')} Record Metric</button>
+          <a href="#/metrics?patient=${p.id}" class="${CLS.btnSecondary}">${icon('chart-line')} View charts</a>
+          ${isAdmin ? `<button id="delete-patient-btn" class="${CLS.btnDangerGhost}">${icon('trash-2')} Delete</button>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div class="space-y-6">
+        <section class="${CLS.card} p-5">
+          <h2 class="mb-2 font-semibold text-slate-900">Allergies</h2>
+          ${p.allergies.length
+            ? `<div class="flex flex-wrap gap-2">${p.allergies.map((a) => `<span class="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-3 py-1 text-sm font-medium text-red-700">${icon('triangle-alert', 'h-3.5 w-3.5')} ${esc(a)}</span>`).join('')}</div>`
+            : `<p class="inline-flex items-center gap-1.5 text-sm text-emerald-600">${icon('circle-check')} No known allergies</p>`}
+        </section>
+        <section class="${CLS.card} p-5">
+          <h2 class="mb-2 font-semibold text-slate-900">Personal information</h2>
+          <dl class="divide-y divide-slate-100">
+            ${infoRow('Date of birth', esc(fmt.date(p.date_of_birth + 'T00:00:00')))}
+            ${infoRow('Assigned doctor', esc(p.assigned_doctor_name || 'Unassigned'))}
+            ${infoRow('Emergency contact', esc(p.emergency_contact || '—'))}
+            ${infoRow('Emergency phone', p.emergency_phone ? `<a href="tel:${esc(p.emergency_phone)}" class="text-indigo-600">${esc(p.emergency_phone)}</a>` : '—')}
+            ${infoRow('Patient since', esc(fmt.date(p.created_at)))}
+            ${infoRow('Next appointment', esc(p.next_appointment ? fmt.dateTime(p.next_appointment) : '—'))}
+          </dl>
+        </section>
+      </div>
+
+      <div class="space-y-6 lg:col-span-2">
+        <section class="${CLS.card} p-5">
+          <div class="mb-4 flex items-center justify-between">
+            <h2 class="font-semibold text-slate-900">Latest metrics</h2>
+            <span class="text-xs text-slate-400">${p.metrics_count} readings total</span>
+          </div>
+          ${summary === null
+            ? `<p class="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">Metrics unavailable: ${esc(summaryRes.reason?.message || 'unknown error')}</p>`
+            : `<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              ${summary.map((m) => {
+                const meta = METRIC_META[m.metric_type];
+                const st = m.latest ? STATUS_STYLES[m.latest.status] : null;
+                return `<a href="#/metrics?patient=${p.id}&type=${m.metric_type}" class="block rounded-lg border border-slate-200 border-l-4 p-4 transition hover:shadow-md ${st ? st.border : 'border-l-slate-200'}">
+                  <div class="flex items-center justify-between">
+                    <span class="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600">${icon(meta.icon, 'h-4 w-4 text-slate-400')} ${esc(meta.label)}</span>
+                    ${m.latest ? `<span class="h-2.5 w-2.5 rounded-full ${st.dot}" title="${m.latest.status}"></span>` : ''}
+                  </div>
+                  ${m.latest ? `
+                    <p class="mt-2 text-2xl font-semibold text-slate-900">${esc(formatReading(m.metric_type, m.latest.value, m.latest.secondary_value))} <span class="text-sm font-normal text-slate-400">${esc(meta.unit)}</span></p>
+                    <div class="mt-1 flex items-center justify-between text-xs text-slate-500">
+                      <span>${esc(fmt.relative(m.latest.recorded_at))}</span>
+                      <span title="Trend" class="inline-flex items-center gap-1">${icon(trendIcon[m.trend], 'h-3.5 w-3.5')} ${m.trend}</span>
+                    </div>` : '<p class="mt-2 text-sm text-slate-400">No readings</p>'}
+                </a>`;
+              }).join('')}
+            </div>`}
+        </section>
+
+        <section class="${CLS.card}">
+          <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+            <h2 class="font-semibold text-slate-900">Recent appointments</h2>
+            <a href="#/appointments" class="text-sm font-medium text-indigo-600 hover:text-indigo-700">All appointments</a>
+          </div>
+          <div id="patient-appts" class="divide-y divide-slate-100">
+            ${apptRes.status === 'rejected'
+              ? `<p class="px-5 py-4 text-sm text-amber-700">Appointments unavailable: ${esc(apptRes.reason?.message)}</p>`
+              : appointments.length ? appointments.slice(0, 6).map((a) => appointmentRowHTML(a, { showPatient: false })).join('') : emptyHTML('calendar', 'No appointments yet')}
+          </div>
+        </section>
+      </div>
+    </div>`;
+
+  bindAppointmentRows($('#patient-appts'), appointments, () => router());
+  $('#record-metric-btn').addEventListener('click', () => openRecordMetricModal({ patientId: p.id, patientName: p.name, onSaved: () => router() }));
+  if (isAdmin) {
+    $('#delete-patient-btn').addEventListener('click', async () => {
+      const ok = await confirmModal({
+        title: 'Delete patient',
+        message: `Delete ${p.name}? The patient record will be removed from active lists.`,
+        confirmLabel: 'Delete patient',
+        danger: true,
+      });
+      if (!ok) return;
+      try {
+        await api(`/patients/${p.id}`, { method: 'DELETE' });
+        toast(`${p.name} deleted`);
+        location.hash = '#/patients';
+      } catch (err) {
+        toast(err.message, 'error');
+      }
+    });
+  }
+}
+
+/* ============================================================
+ * View: Appointments
+ * ============================================================ */
+async function renderAppointments(view, rid) {
+  const { data: appointments } = await api('/appointments');
+  if (stale(rid)) return;
+
+  let statusFilter = 'all';
+  let scope = 'all';
+  const statuses = ['all', 'scheduled', 'confirmed', 'completed', 'cancelled'];
+
+  view.innerHTML = `
+    ${pageHeader('Appointments', `${appointments.length} appointments`, isStaff() ? `<button id="new-appt-btn" class="${CLS.btnPrimary}">${icon('calendar-plus')} New appointment</button>` : '')}
+    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div id="appt-status-filters" role="group" aria-label="Filter by status" class="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 py-0.5">
+        ${statuses.map((s) => `<button type="button" data-status="${s}" class="${pillClass(s === statusFilter)} capitalize">${s}</button>`).join('')}
+      </div>
+      <select id="appt-scope" aria-label="Filter by date" class="${CLS.input} sm:w-44">
+        <option value="all">All dates</option>
+        <option value="upcoming">Upcoming</option>
+        <option value="past">Past</option>
+      </select>
+    </div>
+    <div class="${CLS.card} overflow-hidden"><div id="appt-list" class="divide-y divide-slate-100"></div></div>`;
+
+  function renderList() {
+    $$('[data-status]').forEach((b) => {
+      const active = b.dataset.status === statusFilter;
+      b.className = `${pillClass(active)} capitalize`;
+      b.setAttribute('aria-pressed', String(active));
+    });
+    const now = new Date();
+    const list = appointments.filter((a) => {
+      if (statusFilter !== 'all' && a.status !== statusFilter) return false;
+      const d = parseDate(a.date_time);
+      if (scope === 'upcoming' && d < now) return false;
+      if (scope === 'past' && d >= now) return false;
+      return true;
+    });
+    const container = $('#appt-list');
+    if (!list.length) { container.innerHTML = emptyHTML('inbox','No appointments match these filters'); return; }
+
+    const todayKey = localDateKey();
+    let todayMarked = false;
+    container.innerHTML = list.map((a) => {
+      let divider = '';
+      if (!todayMarked && a.date_time.slice(0, 10) >= todayKey) {
+        todayMarked = true;
+        divider = `<div class="flex items-center gap-3 bg-indigo-50/60 px-5 py-1.5 text-xs font-semibold uppercase tracking-wide text-indigo-600"><span class="h-px flex-1 bg-indigo-200"></span>Today &amp; upcoming<span class="h-px flex-1 bg-indigo-200"></span></div>`;
+      }
+      return divider + appointmentRowHTML(a, { showDoctor: state.user.role !== 'doctor' });
+    }).join('');
+    bindAppointmentRows(container, list, () => router());
+  }
+
+  $$('[data-status]').forEach((b) => b.addEventListener('click', () => { statusFilter = b.dataset.status; renderList(); }));
+  $('#appt-scope').addEventListener('change', (e) => { scope = e.target.value; renderList(); });
+  if (isStaff()) $('#new-appt-btn').addEventListener('click', () => openCreateAppointmentModal());
+  renderList();
+}
+
+function openAppointmentDetail(a, onChanged) {
+  const role = state.user.role;
+  const staff = isStaff();
+  const active = a.status === 'scheduled' || a.status === 'confirmed';
+  const editable = staff && a.status !== 'cancelled';
+  const nextStatuses = [a.status, ...APPT_TRANSITIONS[a.status]];
+
+  const field = (label, value) => `<div><dt class="text-xs font-medium uppercase tracking-wide text-slate-400">${label}</dt><dd class="mt-0.5 text-sm text-slate-800">${value}</dd></div>`;
+
+  const extra = [];
+  if (active) extra.push(`<button type="button" id="appt-cancel" class="${CLS.btnDangerGhost}">Cancel appointment</button>`);
+  if (role === 'patient' && a.status === 'scheduled') extra.push(`<button type="button" id="appt-confirm" class="${CLS.btnSecondary}">Confirm attendance</button>`);
+
+  openModal({
+    title: 'Appointment details',
+    size: 'max-w-xl',
+    extraActions: extra.join(''),
+    submitLabel: 'Save changes',
+    body: `
+      <dl class="grid grid-cols-2 gap-4">
+        ${field('Patient', staff ? `<a href="#/patients/${a.patient_id}" class="font-medium text-indigo-600 hover:underline">${esc(a.patient_name)}</a>` : esc(a.patient_name))}
+        ${field('Doctor', esc(a.doctor_name))}
+        ${field('Date', esc(fmt.date(a.date_time)))}
+        ${field('Time', `${esc(fmt.time(a.date_time))} · ${a.duration_minutes} min`)}
+        ${field('Status', badge(a.status, APPT_STYLES[a.status]))}
+        ${field('Reason', esc(a.reason || '—'))}
+      </dl>
+      ${editable ? `
+        <div class="border-t border-slate-100 pt-4">
+          <label class="${CLS.label}">Status</label>
+          <select name="status" class="${CLS.input}">${nextStatuses.map((s) => `<option value="${s}" ${s === a.status ? 'selected' : ''}>${s[0].toUpperCase() + s.slice(1)}</option>`).join('')}</select>
+        </div>
+        <div>
+          <label class="${CLS.label}">Doctor's notes</label>
+          <textarea name="notes" rows="5" maxlength="5000" placeholder="Clinical notes (visible to the care team)" class="${CLS.input}">${esc(a.notes || '')}</textarea>
+        </div>` : `
+        <div class="border-t border-slate-100 pt-4">
+          <p class="text-xs font-medium uppercase tracking-wide text-slate-400">Doctor's notes</p>
+          <p class="mt-1 whitespace-pre-line rounded-lg bg-slate-50 p-3 text-sm text-slate-700">${esc(a.notes || 'No notes yet.')}</p>
+        </div>`}`,
+    onSubmit: editable ? async (fd) => {
+      const body = {};
+      if (fd.get('status') !== a.status) body.status = fd.get('status');
+      const notes = String(fd.get('notes') || '');
+      if (notes !== (a.notes || '')) body.notes = notes || null;
+      if (!Object.keys(body).length) { closeModal(); return; }
+      await api(`/appointments/${a.id}`, { method: 'PUT', body });
+      closeModal();
+      toast('Appointment updated');
+      onChanged?.();
+    } : undefined,
+  });
+
+  $('#appt-cancel')?.addEventListener('click', async () => {
+    try {
+      await api(`/appointments/${a.id}`, { method: 'DELETE' });
+      closeModal();
+      toast('Appointment cancelled', 'info');
+      onChanged?.();
+    } catch (err) { showModalError(err.message); }
+  });
+  $('#appt-confirm')?.addEventListener('click', async () => {
+    try {
+      await api(`/appointments/${a.id}`, { method: 'PUT', body: { status: 'confirmed' } });
+      closeModal();
+      toast('Appointment confirmed');
+      onChanged?.();
+    } catch (err) { showModalError(err.message); }
+  });
+}
+
+async function openCreateAppointmentModal() {
+  const [{ data: patients }, doctors] = await Promise.all([api('/patients'), getDoctors()]);
+  const slots = [];
+  for (let h = 8; h < 18; h++) for (const m of [0, 30]) slots.push(`${pad2(h)}:${pad2(m)}`);
+  const defaultDoctor = state.user.role === 'doctor' ? state.user.id : (patients[0]?.assigned_doctor_id || '');
+  const tomorrow = new Date(Date.now() + 86_400_000);
+
+  openModal({
+    title: 'New appointment',
+    submitLabel: 'Create appointment',
+    body: `
+      <div><label class="${CLS.label}">Patient *</label>
+        <select name="patient_id" id="appt-patient" required class="${CLS.input}">
+          ${patients.map((p) => `<option value="${p.id}" data-doctor="${p.assigned_doctor_id || ''}">${esc(p.name)}</option>`).join('')}
+        </select></div>
+      <div><label class="${CLS.label}">Doctor *</label>
+        <select name="doctor_id" id="appt-doctor" required class="${CLS.input}">
+          ${doctors.map((d) => `<option value="${d.id}" ${d.id === defaultDoctor ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}
+        </select></div>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div><label class="${CLS.label}">Date *</label><input name="date" type="date" required min="${localDateKey()}" value="${localDateKey(tomorrow)}" class="${CLS.input}" /></div>
+        <div><label class="${CLS.label}">Time *</label><select name="time" required class="${CLS.input}">${slots.map((s) => `<option ${s === '10:00' ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+        <div><label class="${CLS.label}">Duration</label><select name="duration_minutes" class="${CLS.input}">${[15, 30, 45, 60].map((d) => `<option value="${d}" ${d === 30 ? 'selected' : ''}>${d} min</option>`).join('')}</select></div>
+      </div>
+      <div><label class="${CLS.label}">Reason</label><input name="reason" maxlength="500" placeholder="e.g. Blood pressure follow-up" class="${CLS.input}" /></div>
+      <p class="text-xs text-slate-500">Office hours: 08:00 – 18:00. Overlapping appointments for the same doctor are rejected.</p>`,
+    onSubmit: async (fd) => {
+      const body = {
+        patient_id: Number(fd.get('patient_id')),
+        doctor_id: Number(fd.get('doctor_id')),
+        date_time: `${fd.get('date')}T${fd.get('time')}`,
+        duration_minutes: Number(fd.get('duration_minutes')),
+        reason: fd.get('reason') || null,
+      };
+      await api('/appointments', { method: 'POST', body });
+      closeModal();
+      toast('Appointment created');
+      router();
+    },
+  });
+
+  if (state.user.role === 'admin') {
+    const sync = () => {
+      const opt = $('#appt-patient').selectedOptions[0];
+      if (opt?.dataset.doctor) $('#appt-doctor').value = opt.dataset.doctor;
+    };
+    $('#appt-patient').addEventListener('change', sync);
+    sync();
+  }
+}
+
+/* ============================================================
+ * View: Health metrics
+ * ============================================================ */
+async function renderMetrics(view, rid, params) {
+  await loadRanges();
+  const { data: patients } = await api('/patients');
+  if (stale(rid)) return;
+
+  if (!patients.length) {
+    view.innerHTML = pageHeader('Health Metrics') + `<div class="${CLS.card}">${emptyHTML('stethoscope','No patient records available', state.user.role === 'patient' ? 'Your clinical record has not been created yet. Ask your doctor to set it up.' : 'Add a patient to start recording metrics.')}</div>`;
+    return;
+  }
+
+  let patientId = Number(params.get('patient'));
+  if (!patients.some((p) => p.id === patientId)) patientId = patients[0].id;
+  let type = METRIC_META[params.get('type')] ? params.get('type') : 'blood_pressure';
+  let readingsAll = [];
+  let summary = [];
+
+  view.innerHTML = `
+    ${pageHeader('Health Metrics', 'Trends, ranges and individual readings', `
+      <select id="metrics-patient" class="${CLS.input} sm:w-64" ${patients.length === 1 ? 'disabled' : ''}>
+        ${patients.map((p) => `<option value="${p.id}" ${p.id === patientId ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}
+      </select>
+      <button id="metrics-record-btn" class="${CLS.btnPrimary} whitespace-nowrap">${icon('plus')} Record New Metric</button>`)}
+    <div id="metrics-tabs" role="tablist" aria-label="Metric type" class="no-scrollbar mb-6 flex gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-white p-1 shadow-sm"></div>
+    <div id="metrics-panel">${loadingHTML()}</div>`;
+
+  function syncUrl() {
+    history.replaceState(null, '', `#/metrics?patient=${patientId}&type=${type}`);
+  }
+
+  function renderTabs() {
+    $('#metrics-tabs').innerHTML = METRIC_TYPES.map((t) => {
+      const count = readingsAll.filter((r) => r.metric_type === t).length;
+      const active = t === type;
+      return `<button type="button" role="tab" aria-selected="${active}" data-type="${t}" class="flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${active ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}">
+        ${icon(METRIC_META[t].icon)}<span>${METRIC_META[t].tab}</span>
+        <span class="rounded-full px-1.5 text-xs ${active ? 'bg-white/20' : 'bg-slate-100 text-slate-500'}">${count}</span>
+      </button>`;
+    }).join('');
+    $$('[data-type]', $('#metrics-tabs')).forEach((b) => b.addEventListener('click', () => {
+      type = b.dataset.type;
+      syncUrl();
+      renderTabs();
+      renderPanel();
+      $(`[data-type="${type}"]`, $('#metrics-tabs'))?.focus();
+    }));
+    // Keep the active tab visible when the tab bar scrolls horizontally (phones).
+    $('[aria-selected="true"]', $('#metrics-tabs'))?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
+
+  function renderPanel() {
+    destroyCharts();
+    const meta = METRIC_META[type];
+    const readings = readingsAll.filter((r) => r.metric_type === type);
+    const s = summary.find((m) => m.metric_type === type);
+    const isBP = type === 'blood_pressure';
+    const statValue = (v, v2) => (v === null || v === undefined ? '—' : isBP ? `${fmt.num(v)}/${fmt.num(v2)}` : fmt.num(v, meta.decimals));
+    const trend = { up: ['trending-up', 'Rising', 'text-amber-600'], down: ['trending-down', 'Falling', 'text-sky-600'], stable: ['minus', 'Stable', 'text-emerald-600'] }[s?.trend || 'stable'];
+    const latestStatus = s?.latest?.status;
+
+    const stat = (label, value, extra = '') => `<div class="${CLS.card} p-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-slate-400">${label}</p>
+      <p class="mt-1 text-xl font-semibold text-slate-900">${value}</p>${extra}</div>`;
+
+    $('#metrics-panel').innerHTML = `
+      <div class="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
+        ${stat('Latest', s?.latest ? `${esc(formatReading(type, s.latest.value, s.latest.secondary_value))} <span class="text-sm font-normal text-slate-400">${meta.unit}</span>` : '—',
+          latestStatus ? `<div class="mt-1">${badge(latestStatus, STATUS_STYLES[latestStatus].badge)}</div>` : '')}
+        ${stat('Average', `${statValue(s?.average, s?.secondary_average)} <span class="text-sm font-normal text-slate-400">${meta.unit}</span>`)}
+        ${stat('Minimum', `${statValue(s?.min, s?.secondary_min)}`)}
+        ${stat('Maximum', `${statValue(s?.max, s?.secondary_max)}`)}
+        ${stat('Trend', `<span class="inline-flex items-center gap-1.5 ${trend[2]}">${icon(trend[0], 'h-5 w-5')} ${trend[1]}</span>`, `<p class="mt-1 text-xs text-slate-400">last ${Math.min(readings.length, 10)} readings</p>`)}
+      </div>
+
+      <section class="${CLS.card} mt-6 p-5">
+        <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h2 class="flex items-center gap-2 font-semibold text-slate-900">${icon(meta.icon, 'h-5 w-5 text-indigo-600')} ${meta.label} <span class="font-normal text-slate-400">(${meta.unit})</span></h2>
+          ${bandsLegendHTML(type)}
+        </div>
+        <div class="relative h-80">
+          ${readings.length ? '<canvas id="metrics-chart"></canvas>' : emptyHTML('chart-line','No readings for this metric', 'Use "Record New Metric" to add the first one.')}
+        </div>
+      </section>
+
+      <section class="${CLS.card} mt-6 overflow-hidden">
+        <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <h2 class="font-semibold text-slate-900">Readings</h2>
+          <span class="text-xs text-slate-400">${readings.length} total · out-of-range values highlighted</span>
+        </div>
+        <div class="scrollbar-thin max-h-[28rem] overflow-auto">
+          <table class="min-w-full text-sm">
+            <thead class="sticky top-0 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <tr><th class="px-5 py-3">Date</th><th class="px-5 py-3">Value</th><th class="px-5 py-3">Status</th><th class="px-5 py-3">Recorded by</th><th class="px-5 py-3">Notes</th></tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              ${readings.slice().reverse().map((r) => `
+                <tr class="transition hover:bg-indigo-50/50 ${STATUS_STYLES[r.status].row || 'even:bg-slate-50/60'}">
+                  <td class="whitespace-nowrap px-5 py-2.5 text-slate-700">${esc(fmt.dateTime(r.recorded_at))}</td>
+                  <td class="whitespace-nowrap px-5 py-2.5 font-semibold ${r.status === 'critical' ? 'text-red-700' : r.status === 'warning' ? 'text-amber-700' : 'text-slate-900'}">${esc(formatReading(type, r.value, r.secondary_value))} <span class="font-normal text-slate-400">${esc(r.unit)}</span></td>
+                  <td class="px-5 py-2.5">${badge(r.status, STATUS_STYLES[r.status].badge)}</td>
+                  <td class="whitespace-nowrap px-5 py-2.5 text-slate-600">${esc(r.recorded_by_name || '—')}</td>
+                  <td class="px-5 py-2.5 text-slate-500">${esc(r.notes || '')}</td>
+                </tr>`).join('') || `<tr><td colspan="5">${emptyHTML('clipboard-list','No readings yet')}</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+      </section>`;
+
+    if (readings.length) createMetricChart($('#metrics-chart'), type, readings);
+  }
+
+  async function loadPatient() {
+    $('#metrics-panel').innerHTML = loadingHTML();
+    const [m, s] = await Promise.all([api(`/health-metrics/${patientId}`), api(`/health-metrics/${patientId}/summary`)]);
+    if (stale(rid)) return;
+    readingsAll = m.data;
+    summary = s.data.metrics;
+    renderTabs();
+    renderPanel();
+  }
+
+  $('#metrics-patient').addEventListener('change', async (e) => {
+    patientId = Number(e.target.value);
+    syncUrl();
+    try { await loadPatient(); } catch (err) { $('#metrics-panel').innerHTML = errorHTML(err.message); }
+  });
+  $('#metrics-record-btn').addEventListener('click', () => {
+    const p = patients.find((x) => x.id === patientId);
+    openRecordMetricModal({ patientId, patientName: p?.name, type, onSaved: () => loadPatient() });
+  });
+
+  syncUrl();
+  await loadPatient();
+}
+
+function openRecordMetricModal({ patientId, patientName, type = 'blood_pressure', onSaved }) {
+  openModal({
+    title: 'Record health metric',
+    submitLabel: 'Save reading',
+    body: `
+      <div class="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">Patient: <span class="font-medium text-slate-900">${esc(patientName || `#${patientId}`)}</span></div>
+      <div><label class="${CLS.label}">Metric type *</label>
+        <select name="metric_type" id="rm-type" class="${CLS.input}">
+          ${METRIC_TYPES.map((t) => `<option value="${t}" ${t === type ? 'selected' : ''}>${METRIC_META[t].label}</option>`).join('')}
+        </select></div>
+      <div class="grid grid-cols-2 gap-4">
+        <div><label class="${CLS.label}" id="rm-value-label">Value *</label>
+          <div class="relative"><input name="value" type="number" step="any" required class="${CLS.input} pr-16" /><span id="rm-unit" class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-slate-400"></span></div></div>
+        <div id="rm-secondary-wrap"><label class="${CLS.label}">Diastolic *</label>
+          <div class="relative"><input name="secondary_value" id="rm-secondary" type="number" step="any" class="${CLS.input} pr-16" /><span class="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-slate-400">mmHg</span></div></div>
+      </div>
+      <div><label class="${CLS.label}">Recorded at</label><input name="recorded_at" type="datetime-local" max="${localDateTimeInput()}" value="${localDateTimeInput()}" class="${CLS.input}" /></div>
+      <div><label class="${CLS.label}">Notes</label><textarea name="notes" rows="3" maxlength="1000" placeholder="Context for this reading (optional)" class="${CLS.input}"></textarea></div>
+      <p id="rm-range" class="text-xs text-slate-500"></p>`,
+    onSubmit: async (fd) => {
+      const metricType = fd.get('metric_type');
+      const body = {
+        patient_id: patientId,
+        metric_type: metricType,
+        value: Number(fd.get('value')),
+        notes: fd.get('notes') || null,
+      };
+      if (fd.get('recorded_at')) body.recorded_at = fd.get('recorded_at');
+      if (metricType === 'blood_pressure' && fd.get('secondary_value') !== '') body.secondary_value = Number(fd.get('secondary_value'));
+      const { data } = await api('/health-metrics', { method: 'POST', body });
+      closeModal();
+      if (data.alert) {
+        toast(`Reading saved · ${data.alert.severity.toUpperCase()} alert generated`, data.alert.severity === 'critical' ? 'error' : 'warning');
+        refreshUnreadBadge();
+      } else {
+        toast('Reading saved · within normal range');
+      }
+      onSaved?.();
+    },
+  });
+
+  const sync = () => {
+    const t = $('#rm-type').value;
+    const isBP = t === 'blood_pressure';
+    $('#rm-unit').textContent = METRIC_META[t].unit;
+    $('#rm-value-label').textContent = isBP ? 'Systolic *' : 'Value *';
+    $('#rm-secondary-wrap').classList.toggle('invisible', !isBP);
+    $('#rm-secondary').required = isBP;
+    const r = state.ranges?.[t];
+    const d = state.ranges?.blood_pressure_diastolic;
+    $('#rm-range').textContent = r
+      ? `Normal range: ${r.normal[0]}–${r.normal[1]}${isBP && d ? ` / ${d.normal[0]}–${d.normal[1]}` : ''} ${METRIC_META[t].unit}`
+      : 'This metric does not generate alerts.';
+  };
+  $('#rm-type').addEventListener('change', sync);
+  sync();
+}
+
+/* ============================================================
+ * View: Notifications
+ * ============================================================ */
+async function renderNotifications(view, rid) {
+  let filter = 'all';
+  const filters = [
+    { key: 'all', label: 'All', query: '?limit=200' },
+    { key: 'unread', label: 'Unread', query: '?unread=true&limit=200' },
+    { key: 'critical', label: 'Critical only', query: '?severity=critical&limit=200' },
+  ];
+
+  view.innerHTML = `
+    ${pageHeader('Notifications', '<span id="notif-subtitle"></span>')}
+    <div role="group" aria-label="Filter notifications" class="no-scrollbar -mx-1 mb-4 flex gap-2 overflow-x-auto px-1 py-0.5">
+      ${filters.map((f) => `<button type="button" data-filter="${f.key}" class="${pillClass(f.key === filter)}">${f.label}</button>`).join('')}
+    </div>
+    <div class="${CLS.card} overflow-hidden"><div id="notif-list" class="divide-y divide-slate-100">${loadingHTML()}</div></div>`;
+
+  async function updateSubtitle() {
+    try {
+      const { data } = await api('/notifications/unread-count');
+      const el = $('#notif-subtitle');
+      if (el) el.textContent = `${data.count} unread · ${data.critical} critical unread`;
+    } catch { /* ignore */ }
+  }
+
+  async function load() {
+    $$('[data-filter]').forEach((b) => {
+      const active = b.dataset.filter === filter;
+      b.className = pillClass(active);
+      b.setAttribute('aria-pressed', String(active));
+    });
+    const list = $('#notif-list');
+    list.innerHTML = loadingHTML();
+    const { data } = await api(`/notifications${filters.find((f) => f.key === filter).query}`);
+    if (stale(rid)) return;
+
+    if (!data.length) { list.innerHTML = emptyHTML('check-check','You are all caught up', 'No notifications match this filter.'); return; }
+
+    list.innerHTML = data.map((n) => {
+      const sev = SEVERITY_STYLES[n.severity];
+      const metricLink = n.metric_type
+        ? `<a href="#/metrics?patient=${n.patient_id}&type=${n.metric_type}" class="inline-flex items-center gap-1 text-indigo-600 hover:underline">${icon('chart-line', 'h-3.5 w-3.5')} ${esc(METRIC_META[n.metric_type].label)}: ${esc(formatReading(n.metric_type, n.metric_value, n.metric_secondary_value))} ${esc(n.metric_unit)}</a>`
+        : '';
+      return `<div data-notif-id="${n.id}" data-read="${n.read ? 1 : 0}" ${n.read ? '' : 'role="button" tabindex="0" title="Mark as read"'} class="flex gap-3 border-l-4 p-4 transition hover:bg-slate-50 sm:gap-4 ${CLS.focusRing} ${n.read ? 'bg-white' : 'cursor-pointer bg-indigo-50/40'}" style="${sev.edge}">
+        <div class="pt-0.5">${icon(sev.icon, `h-5 w-5 ${sev.iconColor}`)}</div>
+        <div class="min-w-0 flex-1">
+          <div class="flex flex-wrap items-center gap-2">
+            <p class="font-medium ${n.read ? 'text-slate-600' : 'text-slate-900'}">${esc(n.title)}</p>
+            ${badge(n.severity, sev.badge)}
+            <span data-unread-dot class="${n.read ? 'hidden' : ''} h-2 w-2 rounded-full bg-indigo-500" title="Unread"></span>
+          </div>
+          <p class="mt-0.5 text-sm text-slate-600">${esc(n.message)}</p>
+          <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+            <span class="inline-flex items-center gap-1" title="${esc(fmt.dateTime(n.created_at))}">${icon('clock', 'h-3.5 w-3.5')} ${esc(fmt.relative(n.created_at))}</span>
+            <a href="#/patients/${n.patient_id}" class="inline-flex items-center gap-1 text-indigo-600 hover:underline">${icon('user', 'h-3.5 w-3.5')} ${esc(n.patient_name)}</a>
+            ${metricLink}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+    $$('[data-notif-id]', list).forEach((el) => onActivate(el, () => markRead(el)));
+  }
+
+  async function markRead(el) {
+    if (el.dataset.read === '1') return;
+    el.dataset.read = '1';
+    try {
+      await api(`/notifications/${el.dataset.notifId}/read`, { method: 'PATCH' });
+      el.classList.remove('bg-indigo-50/40', 'cursor-pointer');
+      el.classList.add('bg-white');
+      el.removeAttribute('role');
+      el.removeAttribute('title');
+      if (document.activeElement === el) el.blur();
+      el.removeAttribute('tabindex');
+      $('[data-unread-dot]', el)?.classList.add('hidden');
+      $('p.font-medium', el)?.classList.replace('text-slate-900', 'text-slate-600');
+      refreshUnreadBadge();
+      updateSubtitle();
+      if (filter === 'unread') setTimeout(() => el.remove(), 250);
+    } catch (err) {
+      el.dataset.read = '0';
+      toast(err.message, 'error');
+    }
+  }
+
+  $$('[data-filter]').forEach((b) => b.addEventListener('click', () => { filter = b.dataset.filter; load().catch((err) => toast(err.message, 'error')); }));
+  updateSubtitle();
+  await load();
+}
+
+/* ============================================================
+ * Boot
+ * ============================================================ */
+async function boot() {
+  initAuthScreen();
+  $('#menu-btn').addEventListener('click', openSidebar);
+  $('#sidebar-overlay').addEventListener('click', closeSidebar);
+  $('#logout-btn').addEventListener('click', () => { logout(); toast('Signed out', 'info'); });
+  window.addEventListener('hashchange', router);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshUnreadBadge(); });
+  // Close the mobile drawer if the viewport grows to the desktop layout while it is open.
+  matchMedia('(min-width: 768px)').addEventListener('change', (e) => { if (e.matches) closeSidebar(); });
+
+  if (hasSessionHint()) {
+    try {
+      const { data } = await api('/auth/me');
+      saveSession(data);
+      await loadRanges();
+      setupShell();
+    } catch {
+      clearSession();
+    }
+  }
+  if (isLoggedIn() && !location.hash) history.replaceState(null, '', '#/dashboard');
+  router();
+}
+
+boot();
+</script>
+</body>
+</html>
